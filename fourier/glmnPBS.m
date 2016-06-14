@@ -2,14 +2,14 @@ classdef glmnPBS
     %Guillimin PBS submission arguments
     properties
         % Local script, remote working directory (home, by default)
-        localScript = 'TestGPU';
+        localScript = 'fourier';
         workingDirectory = '.';
 
         % nodes, ppn, gpus, phis and other attributes
         numberOfNodes = 1;
         procsPerNode = 1;
         gpus = 1;
-        phis = 0;
+        mics = 0;
         attributes = '';
 
         % Specify the memory per process required
@@ -19,7 +19,7 @@ classdef glmnPBS
         walltime = '00:30:00'
 
         % Please use metaq unless you require a specific node type
-        queue = 'metaq'
+        queue = 'k20'
 
         % All jobs should specify an account or RAPid:
         % e.g.
@@ -36,7 +36,6 @@ classdef glmnPBS
         function job = submitTo(cluster)
             opt = glmnPBS();
             job = batch(cluster,    opt.localScript,     ...
-                'Pool', 1, ...
                 'CurrentDirectory', opt.workingDirectory ...
                 );
         end
@@ -47,7 +46,7 @@ classdef glmnPBS
             % You may also hard-code the number of workers in case it
             % does not follow the default nodes*ppn-1 rule. For example:
             % nbWorkers = 2;
-            nbWorkers = 1;
+            nbWorkers = obj.numberOfNodes * obj.procsPerNode - 1;
         end
 
         function submitArgs = getSubmitArgs(obj)
@@ -62,8 +61,8 @@ classdef glmnPBS
                 compRes = sprintf('%s:gpus=%d', compRes, obj.gpus);
             end
 
-            if obj.phis > 0
-                compRes = sprintf('%s:phis=%d', compRes, obj.phis);
+            if obj.mics > 0
+                compRes = sprintf('%s:mics=%d', compRes, obj.mics);
             end
 
             if not(isempty(obj.attributes))
@@ -72,7 +71,7 @@ classdef glmnPBS
 
             compRes = sprintf('%s -l pmem=%s -l walltime=%s', compRes, obj.pmem, obj.walltime);
 
-            nLicenses = 1;
+            nLicenses = obj.getNbWorkers() + 1;
 
             submitArgs = sprintf('%s -q %s -l %s -W x=GRES:MATLAB_Distrib_Comp_Engine:%d %s', ...
                 pbsAccount, obj.queue, compRes, nLicenses, obj.otherOptions);
